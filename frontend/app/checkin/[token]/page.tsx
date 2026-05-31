@@ -1,17 +1,19 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { visitorsApi } from "@/lib/api"
-import { CheckCircle, Loader2, XCircle, Building2, User, Briefcase, UserCheck, Info } from "lucide-react"
+import { visitorsApi, attendanceApi } from "@/lib/api"
+import { CheckCircle, LogOut, Loader2, XCircle, Building2, User, Briefcase, UserCheck, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Visitor } from "@/types"
 
-type Mode = "detecting" | "visitor_detail" | "visitor_done" | "error"
+type Mode = "detecting" | "visitor_detail" | "visitor_done" | "member_checkin" | "member_checkout" | "error"
 
 export default function CheckinPage() {
   const { token } = useParams<{ token: string }>()
   const [mode, setMode] = useState<Mode>("detecting")
   const [visitor, setVisitor] = useState<Visitor | null>(null)
+  const [memberName, setMemberName] = useState("")
+  const [duration, setDuration] = useState<number | null>(null)
   const [errorMsg, setErrorMsg] = useState("")
   const [checking, setChecking] = useState(false)
 
@@ -19,6 +21,7 @@ export default function CheckinPage() {
     if (!token) return
 
     if (token.startsWith("visitor_")) {
+      // Visitor QR — show details and let them confirm
       visitorsApi
         .getByToken(token)
         .then((res) => {
@@ -30,8 +33,19 @@ export default function CheckinPage() {
           setMode("error")
         })
     } else {
-      setErrorMsg("This QR code is not valid for visitor check-in.")
-      setMode("error")
+      // Member JWT QR — auto check-in / check-out
+      attendanceApi
+        .scan(token)
+        .then((res) => {
+          const data = res.data
+          setMemberName(data.user_name)
+          setDuration(data.duration_minutes ?? null)
+          setMode(data.action === "checkout" ? "member_checkout" : "member_checkin")
+        })
+        .catch(() => {
+          setErrorMsg("QR code is invalid or has expired. Please refresh your QR from the app.")
+          setMode("error")
+        })
     }
   }, [token])
 
@@ -141,6 +155,44 @@ export default function CheckinPage() {
               <p className="text-green-700 text-sm font-medium">
                 Visiting <span className="font-bold">{visitor.host_name}</span> · {visitor.purpose || "Welcome"}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Member: checked in */}
+        {mode === "member_checkin" && (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+              <CheckCircle className="w-10 h-10 text-green-600" />
+            </div>
+            <p className="text-gray-400 text-sm font-medium uppercase tracking-widest mb-1">Checked In</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {memberName}!</h1>
+            <p className="text-gray-500 text-sm">
+              {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+            <div className="mt-6 py-3 px-4 bg-green-50 rounded-xl">
+              <p className="text-green-700 text-sm font-medium">Have a productive day 🚀</p>
+            </div>
+          </div>
+        )}
+
+        {/* Member: checked out */}
+        {mode === "member_checkout" && (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-5">
+              <LogOut className="w-10 h-10 text-blue-600" />
+            </div>
+            <p className="text-gray-400 text-sm font-medium uppercase tracking-widest mb-1">Checked Out</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Goodbye, {memberName}!</h1>
+            {duration !== null && (
+              <p className="text-gray-500 text-sm">
+                You worked for <span className="font-semibold text-gray-700">
+                  {Math.floor(duration / 60)}h {duration % 60}m
+                </span>
+              </p>
+            )}
+            <div className="mt-6 py-3 px-4 bg-blue-50 rounded-xl">
+              <p className="text-blue-700 text-sm font-medium">See you next time! 👋</p>
             </div>
           </div>
         )}
