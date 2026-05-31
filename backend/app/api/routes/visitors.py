@@ -5,9 +5,10 @@ from datetime import datetime
 from uuid import uuid4
 
 from app.core.database import get_db
-from app.models.models import Visitor, VisitorStatusEnum
+from app.models.models import Visitor, VisitorStatusEnum, RoleEnum
 from app.schemas.schemas import VisitorCreate, VisitorOut
 from app.api.deps import get_current_user
+from app.services.notify import notify_branch_staff
 
 router = APIRouter(prefix="/api/visitors", tags=["visitors"])
 
@@ -50,6 +51,17 @@ def checkin_by_token(token: str, db: Session = Depends(get_db)):
     visitor.check_in = datetime.utcnow()
     db.commit()
     db.refresh(visitor)
+    # Notify branch staff (receptionist + manager) — not the person who scanned
+    company_part = f" from {visitor.company}" if visitor.company else ""
+    purpose_part = f" · {visitor.purpose}" if visitor.purpose else ""
+    notify_branch_staff(
+        db,
+        branch_id=visitor.branch_id,
+        roles=[RoleEnum.receptionist, RoleEnum.branch_manager, RoleEnum.super_admin],
+        title=f"Visitor arrived: {visitor.name}{company_part}",
+        body=f"Here to see {visitor.host_name}{purpose_part}",
+        notif_type="info",
+    )
     return _build_out(visitor)
 
 
