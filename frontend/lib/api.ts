@@ -27,6 +27,12 @@ api.interceptors.response.use(
 
 export default api
 
+// Public axios instance — no auth header, no 401 redirect (used by kiosk scan)
+const publicApi = axios.create({
+  baseURL: API_URL,
+  headers: { "Content-Type": "application/json" },
+})
+
 // Auth
 export const authApi = {
   login: (email: string, password: string) =>
@@ -51,6 +57,8 @@ export const visitorsApi = {
   create: (data: object) => api.post("/api/visitors", data),
   update: (id: number, data: object) => api.put(`/api/visitors/${id}`, data),
   checkout: (id: number) => api.patch(`/api/visitors/${id}/checkout`),
+  getByToken: (token: string) => publicApi.get(`/api/visitors/token/${token}`),
+  checkinByToken: (token: string) => publicApi.patch(`/api/visitors/checkin/${token}`),
 }
 
 // Leads
@@ -136,7 +144,7 @@ export const roomsApi = {
 // Attendance / QR Check-in
 export const attendanceApi = {
   getQr: () => api.get("/api/attendance/qr"),
-  scan: (token: string) => api.post("/api/attendance/scan", { token }),
+  scan: (token: string) => publicApi.post("/api/attendance/scan", { token }),
   my: () => api.get("/api/attendance/my"),
   list: (params?: object) => api.get("/api/attendance", { params }),
 }

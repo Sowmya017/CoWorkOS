@@ -9,6 +9,11 @@ from app.core.database import engine
 from sqlalchemy import text
 
 migrations = [
+    # Visitor: purpose + qr_token columns
+    "ALTER TABLE visitors ADD COLUMN IF NOT EXISTS purpose VARCHAR(255)",
+    "ALTER TABLE visitors ADD COLUMN IF NOT EXISTS qr_token VARCHAR(100)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_visitors_qr_token ON visitors (qr_token)",
+
     # Invoice new columns
     "ALTER TABLE invoices ALTER COLUMN client_id DROP NOT NULL",
     "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS client_name VARCHAR(255)",

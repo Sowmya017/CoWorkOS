@@ -1,6 +1,7 @@
 "use client"
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Bell, Search, LogOut, Settings, User, ChevronDown, Check, BookOpen, FileText, Ticket, DoorOpen, Info, Menu } from "lucide-react"
+import dynamic from "next/dynamic"
+import { Bell, Search, LogOut, Settings, User, ChevronDown, Check, BookOpen, FileText, Ticket, DoorOpen, Info, Menu, ScanLine } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +9,10 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { notificationsApi } from "@/lib/api"
 import { Notification } from "@/types"
+
+const ScanModal = dynamic(() => import("@/components/kiosk/ScanModal"), { ssr: false })
+
+const SCAN_ROLES = ["super_admin", "branch_manager", "receptionist"]
 
 const roleLabel: Record<string, string> = {
   super_admin: "Super Admin",
@@ -45,6 +50,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const router = useRouter()
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
   const [notifs, setNotifs] = useState<Notification[]>([])
   const profileRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
@@ -83,6 +89,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   }
 
   return (
+  <>
     <header className="h-14 md:h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-30">
       {/* Left: hamburger (mobile) + search (desktop) */}
       <div className="flex items-center gap-3">
@@ -99,6 +106,17 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       </div>
 
       <div className="flex items-center gap-1 md:gap-2">
+        {/* QR Scan button — receptionist / manager / admin only */}
+        {user?.role && SCAN_ROLES.includes(user.role) && (
+          <button
+            onClick={() => { setScanOpen(true); setNotifOpen(false); setProfileOpen(false) }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#CC2229] hover:bg-[#A51B21] text-white text-xs font-medium transition-colors"
+            title="Scan Member QR"
+          >
+            <ScanLine className="w-4 h-4" />
+            <span className="hidden sm:inline">Scan QR</span>
+          </button>
+        )}
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <button
@@ -230,5 +248,9 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         </div>
       </div>
     </header>
+
+    {/* QR Scan modal — rendered outside header so it overlays the full page */}
+    {scanOpen && <ScanModal onClose={() => setScanOpen(false)} />}
+  </>
   )
 }

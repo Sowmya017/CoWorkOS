@@ -1,6 +1,9 @@
 "use client"
 import { useState } from "react"
-import { Plus, LogOut, Search, Clock, Users, CheckCircle2, QrCode, Trash2, Download, RefreshCw } from "lucide-react"
+import {
+  Plus, LogOut, Search, Clock, Users, CheckCircle2, QrCode,
+  Trash2, Download, Copy, Check, X,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,20 +22,8 @@ import { useToast } from "@/components/ui/use-toast"
 
 const PURPOSES = ["Meeting", "Interview", "Delivery", "Site Visit", "Demo", "Personal", "Other"]
 
-const MOCK_VISITORS: Visitor[] = [
-  { id: 1, name: "Rahul Sharma", phone: "9876543210", company: "TechCorp India", host_name: "Priya Mehta", branch_id: 1, check_in: new Date(Date.now() - 2 * 3600000).toISOString(), status: "checked_in" },
-  { id: 2, name: "Ananya Patel", phone: "8765432109", company: "DesignHub", host_name: "Arjun Nair", branch_id: 1, check_in: new Date(Date.now() - 5 * 3600000).toISOString(), check_out: new Date(Date.now() - 2 * 3600000).toISOString(), status: "checked_out" },
-  { id: 3, name: "Vikram Singh", phone: "7654321098", company: "StartupX", host_name: "Divya Rao", branch_id: 2, check_in: new Date(Date.now() - 1 * 3600000).toISOString(), status: "checked_in" },
-  { id: 4, name: "Meera Iyer", phone: "6543210987", company: "MediaCo", host_name: "Rohan Joshi", branch_id: 3, check_in: new Date(Date.now() - 3 * 3600000).toISOString(), check_out: new Date(Date.now() - 1 * 3600000).toISOString(), status: "checked_out" },
-  { id: 5, name: "Aditya Kumar", phone: "5432109876", company: "FinTech Ltd", host_name: "Sneha Gupta", branch_id: 1, check_in: new Date(Date.now() - 30 * 60000).toISOString(), status: "checked_in" },
-  { id: 6, name: "Priya Rajan", phone: "4321098765", company: "EduTech Co", host_name: "Arjun Nair", branch_id: 2, check_in: new Date(Date.now() - 8 * 3600000).toISOString(), check_out: new Date(Date.now() - 6 * 3600000).toISOString(), status: "checked_out" },
-  { id: 7, name: "Suresh Verma", phone: "3210987654", company: "GreenBuild", host_name: "Priya Mehta", branch_id: 1, check_in: new Date(Date.now() - 15 * 60000).toISOString(), status: "checked_in" },
-  { id: 8, name: "Kavya Reddy", phone: "2109876543", company: "CraftWorks", host_name: "Divya Rao", branch_id: 3, check_in: new Date(Date.now() - 4 * 3600000).toISOString(), check_out: new Date(Date.now() - 2 * 3600000).toISOString(), status: "checked_out" },
-]
-
 const EMPTY_FORM = { name: "", phone: "", company: "", host_name: "", purpose: "Meeting", branch_id: 1 }
 
-// Duration string from two timestamps
 function duration(checkIn: string, checkOut?: string): string {
   const end = checkOut ? new Date(checkOut) : new Date()
   const mins = Math.floor((end.getTime() - new Date(checkIn).getTime()) / 60000)
@@ -40,8 +31,111 @@ function duration(checkIn: string, checkOut?: string): string {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`
 }
 
+// ─── QR Modal ────────────────────────────────────────────────────────────────
+function VisitorQRModal({ visitor, open, onClose }: { visitor: Visitor | null; open: boolean; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  if (!visitor || !visitor.qr_token) return null
+
+  const checkinUrl = `${window.location.origin}/checkin/${visitor.qr_token}`
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(checkinUrl)}&bgcolor=ffffff&color=1e293b&margin=4`
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(checkinUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownload = () => {
+    const link = document.createElement("a")
+    link.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(checkinUrl)}&bgcolor=ffffff&color=1e293b&margin=8`
+    link.download = `visitor-qr-${visitor.name.replace(/\s+/g, "-").toLowerCase()}.png`
+    link.click()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <QrCode className="w-5 h-5 text-[#CC2229]" /> Visitor QR Code
+          </DialogTitle>
+          <DialogDescription>Share this QR with the visitor for digital check-in.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          {/* Visitor info */}
+          <div className="bg-gray-50 rounded-xl p-3 space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Name</span>
+              <span className="font-medium text-gray-800">{visitor.name}</span>
+            </div>
+            {visitor.company && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Company</span>
+                <span className="font-medium text-gray-800">{visitor.company}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-gray-500">Host</span>
+              <span className="font-medium text-gray-800">{visitor.host_name}</span>
+            </div>
+            {visitor.purpose && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Purpose</span>
+                <span className="font-medium text-gray-800">{visitor.purpose}</span>
+              </div>
+            )}
+          </div>
+
+          {/* QR Code */}
+          <div className="flex flex-col items-center gap-3 py-2">
+            <div className="p-3 bg-white rounded-2xl border-2 border-gray-100 shadow-inner">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrImageUrl}
+                alt="Visitor QR Code"
+                width={200}
+                height={200}
+                className="rounded-lg"
+              />
+            </div>
+            <p className="text-xs font-mono text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full border text-center break-all max-w-full">
+              {visitor.qr_token}
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 gap-2 text-sm" onClick={handleDownload}>
+              <Download className="w-4 h-4" /> Download
+            </Button>
+            <Button variant="outline" className="flex-1 gap-2 text-sm" onClick={handleCopy}>
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? "Copied!" : "Copy Link"}
+            </Button>
+          </div>
+
+          <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-700 space-y-0.5">
+            <p className="font-semibold text-blue-800">How it works</p>
+            <p>1. Send this QR or link to the visitor</p>
+            <p>2. They scan with any phone camera</p>
+            <p>3. Check-in page opens — one tap to confirm</p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Visitor row ──────────────────────────────────────────────────────────────
-function VisitorRow({ visitor, onCheckout, onDelete }: { visitor: Visitor; onCheckout: (id: number) => void; onDelete: (id: number) => void }) {
+function VisitorRow({
+  visitor, onCheckout, onDelete, onViewQR,
+}: {
+  visitor: Visitor
+  onCheckout: (id: number) => void
+  onDelete: (id: number) => void
+  onViewQR: (v: Visitor) => void
+}) {
   return (
     <TableRow className="group">
       <TableCell>
@@ -57,6 +151,7 @@ function VisitorRow({ visitor, onCheckout, onDelete }: { visitor: Visitor; onChe
       </TableCell>
       <TableCell className="text-gray-600 text-sm">{visitor.company || "—"}</TableCell>
       <TableCell className="text-gray-600 text-sm">{visitor.host_name}</TableCell>
+      <TableCell className="text-gray-500 text-sm">{visitor.purpose || "—"}</TableCell>
       <TableCell className="text-gray-500 text-sm">{formatDateTime(visitor.check_in)}</TableCell>
       <TableCell className="text-gray-500 text-sm">
         {visitor.check_out ? formatDateTime(visitor.check_out) : (
@@ -73,6 +168,11 @@ function VisitorRow({ visitor, onCheckout, onDelete }: { visitor: Visitor; onChe
       </TableCell>
       <TableCell>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {visitor.qr_token && (
+            <Button size="sm" variant="outline" onClick={() => onViewQR(visitor)} className="gap-1 h-7 text-xs">
+              <QrCode className="w-3 h-3" /> QR
+            </Button>
+          )}
           {visitor.status === "checked_in" && (
             <Button size="sm" variant="outline" onClick={() => onCheckout(visitor.id)} className="gap-1 h-7 text-xs text-red-600 border-red-200 hover:bg-red-50">
               <LogOut className="w-3 h-3" /> Out
@@ -90,11 +190,10 @@ function VisitorRow({ visitor, onCheckout, onDelete }: { visitor: Visitor; onChe
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function VisitorsPage() {
   const { visitors: apiVisitors, loading, checkIn, checkOut, deleteVisitor } = useVisitors()
-  const [localVisitors, setLocalVisitors] = useState<Visitor[]>(MOCK_VISITORS)
+  const [localVisitors, setLocalVisitors] = useState<Visitor[]>([])
   const visitors = apiVisitors.length > 0 ? apiVisitors : localVisitors
   const [open, setOpen] = useState(false)
-  const [qrOpen, setQrOpen] = useState(false)
-  const [qrBranch, setQrBranch] = useState("1")
+  const [qrVisitor, setQrVisitor] = useState<Visitor | null>(null)
   const [search, setSearch] = useState("")
   const [branchFilter, setBranchFilter] = useState("all")
   const [page, setPage] = useState(1)
@@ -123,6 +222,7 @@ export default function VisitorsPage() {
 
   const handleCheckIn = async () => {
     if (!form.name.trim()) { toast({ title: "Visitor name required", variant: "destructive" }); return }
+    if (!form.host_name.trim()) { toast({ title: "Host name required", variant: "destructive" }); return }
     try {
       const newVisitor = await checkIn({ ...form, check_in: new Date().toISOString(), status: "checked_in" })
       if (!newVisitor) {
@@ -131,7 +231,7 @@ export default function VisitorsPage() {
       }
       setOpen(false)
       setForm(EMPTY_FORM)
-      toast({ title: `${form.name} checked in!` })
+      toast({ title: `${form.name} checked in successfully!` })
     } catch {
       toast({ title: "Check-in failed", variant: "destructive" })
     }
@@ -167,6 +267,7 @@ export default function VisitorsPage() {
                 <TableHead>Visitor</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Host</TableHead>
+                <TableHead>Purpose</TableHead>
                 <TableHead>Check In</TableHead>
                 <TableHead>Duration / Out</TableHead>
                 <TableHead>Status</TableHead>
@@ -175,7 +276,13 @@ export default function VisitorsPage() {
             </TableHeader>
             <TableBody>
               {items.map((v) => (
-                <VisitorRow key={v.id} visitor={v} onCheckout={handleCheckout} onDelete={handleDelete} />
+                <VisitorRow
+                  key={v.id}
+                  visitor={v}
+                  onCheckout={handleCheckout}
+                  onDelete={handleDelete}
+                  onViewQR={setQrVisitor}
+                />
               ))}
             </TableBody>
           </Table>
@@ -195,14 +302,9 @@ export default function VisitorsPage() {
           <h1 className="text-2xl font-bold text-gray-800">Visitors</h1>
           <p className="text-gray-500 text-sm">Track and manage front-desk check-ins</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-2 hidden md:flex" onClick={() => setQrOpen(true)}>
-            <QrCode className="w-4 h-4" /> QR Check-In
-          </Button>
-          <Button onClick={() => { setForm(EMPTY_FORM); setOpen(true) }} className="gap-2">
-            <Plus className="w-4 h-4" /> Check In Visitor
-          </Button>
-        </div>
+        <Button onClick={() => { setForm(EMPTY_FORM); setOpen(true) }} className="gap-2">
+          <Plus className="w-4 h-4" /> Check In Visitor
+        </Button>
       </div>
 
       {/* Stat chips */}
@@ -234,9 +336,9 @@ export default function VisitorsPage() {
           <SelectTrigger className="w-44 h-9"><SelectValue placeholder="All Branches" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Branches</SelectItem>
-            <SelectItem value="1">Koramangala Hub</SelectItem>
-            <SelectItem value="2">Indiranagar Center</SelectItem>
-            <SelectItem value="3">Bandra Workspace</SelectItem>
+            <SelectItem value="1">Branch 1</SelectItem>
+            <SelectItem value="2">Branch 2</SelectItem>
+            <SelectItem value="3">Branch 3</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -255,16 +357,16 @@ export default function VisitorsPage() {
         </TabsList>
 
         <TabsContent value="today" className="mt-4">
-          {loading ? <TableSkeleton rows={5} cols={7} /> : <TableView list={todayVisitors} />}
+          {loading ? <TableSkeleton rows={5} cols={8} /> : <TableView list={todayVisitors} />}
         </TabsContent>
         <TabsContent value="active" className="mt-4">
-          {loading ? <TableSkeleton rows={5} cols={7} /> : <TableView list={checkedInNow} />}
+          {loading ? <TableSkeleton rows={5} cols={8} /> : <TableView list={checkedInNow} />}
         </TabsContent>
         <TabsContent value="all" className="mt-4">
-          {loading ? <TableSkeleton rows={5} cols={7} /> : <TableView list={visitors} />}
+          {loading ? <TableSkeleton rows={5} cols={8} /> : <TableView list={visitors} />}
         </TabsContent>
         <TabsContent value="history" className="mt-4">
-          {loading ? <TableSkeleton rows={5} cols={7} /> : <TableView list={history} />}
+          {loading ? <TableSkeleton rows={5} cols={8} /> : <TableView list={history} />}
         </TabsContent>
       </Tabs>
 
@@ -273,7 +375,7 @@ export default function VisitorsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Check In Visitor</DialogTitle>
-            <DialogDescription>Register a new visitor at the front desk.</DialogDescription>
+            <DialogDescription>Register a new visitor — a QR code is automatically generated.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-4">
@@ -301,100 +403,28 @@ export default function VisitorsPage() {
                 </Select>
               </div>
             </div>
+
+            <div className="bg-blue-50 rounded-xl p-3 flex items-start gap-2 text-xs text-blue-700">
+              <QrCode className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
+              <span>A unique QR code will be generated automatically after check-in.</span>
+            </div>
+
             <div className="flex gap-3 justify-end pt-1">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={handleCheckIn} disabled={!form.name.trim()}>
-                <CheckCircle2 className="w-4 h-4 mr-1.5" /> Check In
+              <Button onClick={handleCheckIn} disabled={!form.name.trim() || !form.host_name.trim()}>
+                <CheckCircle2 className="w-4 h-4 mr-1.5" /> Check In &amp; Generate QR
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* QR Check-In Modal */}
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <QrCode className="w-5 h-5 text-blue-600" /> QR Check-In
-            </DialogTitle>
-            <DialogDescription>
-              Display this QR code at the front desk. Visitors scan it to self-check-in.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 pt-1">
-            {/* Branch selector */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Branch</label>
-              <Select value={qrBranch} onValueChange={setQrBranch}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Koramangala Hub</SelectItem>
-                  <SelectItem value="2">Indiranagar Center</SelectItem>
-                  <SelectItem value="3">Bandra Workspace</SelectItem>
-                  <SelectItem value="4">Connaught Place</SelectItem>
-                  <SelectItem value="5">Anna Nagar Hub</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* QR Code */}
-            <div className="flex flex-col items-center gap-3 py-2">
-              <div className="p-3 bg-white rounded-2xl border-2 border-gray-200 shadow-inner">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`http://localhost:3000/checkin?branch=${qrBranch}`)}&bgcolor=ffffff&color=1e293b&margin=4`}
-                  alt="QR Code"
-                  width={180}
-                  height={180}
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-mono text-gray-400 bg-gray-50 px-3 py-1 rounded-full border">
-                  localhost:3000/checkin?branch={qrBranch}
-                </p>
-              </div>
-            </div>
-
-            {/* Instructions */}
-            <div className="bg-blue-50 rounded-xl p-3 space-y-1">
-              <p className="text-xs font-semibold text-blue-800">How it works</p>
-              <ol className="text-xs text-blue-700 space-y-0.5 list-decimal list-inside">
-                <li>Print or display this QR on a tablet/screen</li>
-                <li>Visitor scans with their phone camera</li>
-                <li>They fill in name, company & host</li>
-                <li>Auto check-in recorded instantly</li>
-              </ol>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1 gap-2 text-sm"
-                onClick={() => {
-                  const link = document.createElement("a")
-                  link.href = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`http://localhost:3000/checkin?branch=${qrBranch}`)}`
-                  link.download = `checkin-qr-branch-${qrBranch}.png`
-                  link.click()
-                }}
-              >
-                <Download className="w-4 h-4" /> Download
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 gap-2 text-sm"
-                onClick={() => setQrBranch(qrBranch)}
-              >
-                <RefreshCw className="w-4 h-4" /> Refresh
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Per-visitor QR Modal */}
+      <VisitorQRModal
+        visitor={qrVisitor}
+        open={!!qrVisitor}
+        onClose={() => setQrVisitor(null)}
+      />
     </div>
   )
 }

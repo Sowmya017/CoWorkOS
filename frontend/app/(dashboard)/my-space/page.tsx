@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState, useCallback } from "react"
 import { CalendarDays, FileText, Ticket, Armchair, ArrowRight, CheckCircle, Clock, AlertCircle, QrCode, RefreshCw, ScanLine } from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
+import QRCode from "react-qr-code"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
@@ -191,8 +191,8 @@ export default function MySpacePage() {
           {qrToken ? (
             <div className="flex flex-col items-center gap-3">
               <div className="p-3 bg-white rounded-xl border-2 border-gray-100 shadow-inner">
-                <QRCodeSVG
-                  value={qrToken}
+                <QRCode
+                  value={`${window.location.origin}/checkin/${qrToken}`}
                   size={160}
                   fgColor="#1a1a1a"
                   level="M"

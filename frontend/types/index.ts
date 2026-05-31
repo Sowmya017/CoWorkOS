@@ -24,8 +24,11 @@ export interface Visitor {
   phone: string
   company: string
   host_name: string
+  purpose?: string
   branch_id: number
   branch_name?: string
+  qr_token?: string
+  qr_url?: string
   check_in: string
   check_out?: string
   status: "checked_in" | "checked_out"

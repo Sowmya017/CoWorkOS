@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Building2, Users, UserCheck, Briefcase,
   Armchair, CalendarDays, FileText, Ticket, Settings,
   ChevronLeft, ChevronRight, LogOut, BarChart3, Wallet,
-  Home, Receipt, MessageSquare, DoorOpen, ScanLine, X
+  Home, Receipt, MessageSquare, DoorOpen, ScanLine, X, ClipboardList
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/AuthContext"
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/dashboard",  icon: LayoutDashboard, label: "Dashboard",   roles: ["super_admin","branch_manager","finance_team","sales_team","receptionist"], section: "main" },
   { href: "/branches",   icon: Building2,       label: "Branches",    roles: ["super_admin","branch_manager"], section: "main" },
   { href: "/visitors",   icon: UserCheck,       label: "Visitors",    roles: ["super_admin","branch_manager","receptionist"], section: "main" },
+  { href: "/attendance", icon: ClipboardList,   label: "Attendance",  roles: ["super_admin","branch_manager","receptionist"], section: "main" },
   { href: "/leads",      icon: Briefcase,       label: "CRM / Leads", roles: ["super_admin","branch_manager","sales_team"], section: "main" },
   { href: "/seats",      icon: Armchair,        label: "Seats",       roles: ["super_admin","branch_manager","receptionist"], section: "main" },
   { href: "/rooms",      icon: DoorOpen,        label: "Rooms",       roles: ["super_admin","branch_manager"], section: "main" },
