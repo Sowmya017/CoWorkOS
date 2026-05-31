@@ -44,10 +44,10 @@ def scan_qr(payload: dict, db: Session = Depends(get_db)):
     try:
         data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired QR code")
+        raise HTTPException(status_code=400, detail="Invalid or expired QR code")
 
     if data.get("type") != QR_TYPE:
-        raise HTTPException(status_code=401, detail="Invalid QR type")
+        raise HTTPException(status_code=400, detail="Invalid QR type")
 
     user_id = int(data["sub"])
 
