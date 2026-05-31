@@ -122,6 +122,32 @@ export const subscriptionsApi = {
   delete: (id: number) => api.delete(`/api/subscriptions/${id}`),
 }
 
+// Rooms
+export const roomsApi = {
+  list: (params?: object) => api.get("/api/rooms", { params }),
+  create: (data: object) => api.post("/api/rooms", data),
+  update: (id: number, data: object) => api.put(`/api/rooms/${id}`, data),
+  delete: (id: number) => api.delete(`/api/rooms/${id}`),
+  book: (roomId: number, data: object) => api.post(`/api/rooms/${roomId}/book`, data),
+  myBookings: () => api.get("/api/rooms/bookings"),
+  cancelBooking: (bookingId: number) => api.patch(`/api/rooms/bookings/${bookingId}/cancel`),
+}
+
+// Attendance / QR Check-in
+export const attendanceApi = {
+  getQr: () => api.get("/api/attendance/qr"),
+  scan: (token: string) => api.post("/api/attendance/scan", { token }),
+  my: () => api.get("/api/attendance/my"),
+  list: (params?: object) => api.get("/api/attendance", { params }),
+}
+
+// Notifications
+export const notificationsApi = {
+  list: () => api.get("/api/notifications"),
+  markRead: (id: number) => api.patch(`/api/notifications/${id}/read`),
+  markAllRead: () => api.patch("/api/notifications/read-all"),
+}
+
 // Finance analytics
 export const financeApi = {
   summary: () => api.get("/api/finance/summary"),

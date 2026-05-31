@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
-from app.models.models import Booking, BookingStatusEnum, Seat, SeatStatusEnum
+from app.models.models import Booking, BookingStatusEnum, Seat, SeatStatusEnum, RoleEnum
 from app.schemas.schemas import BookingCreate, BookingUpdate, BookingOut
 from app.api.deps import get_current_user
+from app.services.notify import notify_branch_staff, notify_user
 
 router = APIRouter(prefix="/api/bookings", tags=["bookings"])
 
@@ -40,6 +41,14 @@ def create_booking(data: BookingCreate, db: Session = Depends(get_db), _=Depends
     seat.status = SeatStatusEnum.occupied
     db.commit()
     db.refresh(booking)
+    # Notify branch staff
+    notify_branch_staff(
+        db, seat.branch_id,
+        [RoleEnum.branch_manager, RoleEnum.receptionist],
+        "New Seat Booking",
+        f"Seat {seat.seat_number} was just booked.",
+        "booking"
+    )
     return booking
 
 @router.put("/{booking_id}", response_model=BookingOut)
@@ -64,4 +73,6 @@ def cancel_booking(booking_id: int, db: Session = Depends(get_db), _=Depends(get
         seat.status = SeatStatusEnum.available
     db.commit()
     db.refresh(booking)
+    # Notify the client whose booking was cancelled
+    notify_user(db, booking.user_id, "Booking Cancelled", f"Your booking for seat {seat.seat_number if seat else ''} has been cancelled.", "booking")
     return booking

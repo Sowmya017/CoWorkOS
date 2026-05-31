@@ -77,6 +77,16 @@ class VisitorStatusEnum(str, enum.Enum):
     checked_in = "checked_in"
     checked_out = "checked_out"
 
+class RoomStatusEnum(str, enum.Enum):
+    available = "available"
+    occupied = "occupied"
+    maintenance = "maintenance"
+
+class RoomBookingStatusEnum(str, enum.Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    cancelled = "cancelled"
+
 
 class Branch(Base):
     __tablename__ = "branches"
@@ -92,6 +102,7 @@ class Branch(Base):
     visitors = relationship("Visitor", back_populates="branch")
     bookings = relationship("Booking", back_populates="branch")
     subscriptions = relationship("Subscription", back_populates="branch")
+    rooms = relationship("Room", back_populates="branch")
 
 
 class User(Base):
@@ -229,3 +240,62 @@ class Ticket(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     assigned_user = relationship("User", back_populates="assigned_tickets")
+
+
+class Room(Base):
+    __tablename__ = "rooms"
+    id = Column(Integer, primary_key=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
+    room_name = Column(String(100), nullable=False)
+    floor = Column(Integer, default=1)
+    capacity = Column(Integer, default=10)
+    price_per_hour = Column(Float, default=0.0)
+    status = Column(SAEnum(RoomStatusEnum), default=RoomStatusEnum.available)
+    amenities = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    branch = relationship("Branch", back_populates="rooms")
+    room_bookings = relationship("RoomBooking", back_populates="room")
+
+
+class RoomBooking(Base):
+    __tablename__ = "room_bookings"
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    status = Column(SAEnum(RoomBookingStatusEnum), default=RoomBookingStatusEnum.pending)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    room = relationship("Room", back_populates="room_bookings")
+    user = relationship("User")
+    branch = relationship("Branch")
+
+
+class Attendance(Base):
+    __tablename__ = "attendance"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
+    check_in = Column(DateTime(timezone=True), server_default=func.now())
+    check_out = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), default="checked_in")  # checked_in | checked_out
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+    branch = relationship("Branch")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(255), nullable=False)
+    body = Column(Text, nullable=True)
+    type = Column(String(50), default="info")  # info | booking | invoice | ticket | room
+    is_read = Column(String(5), default="false")  # stored as string for broad DB compat
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")

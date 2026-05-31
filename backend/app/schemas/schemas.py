@@ -3,7 +3,8 @@ from typing import Optional, List
 from datetime import datetime
 from app.models.models import (
     RoleEnum, SeatTypeEnum, SeatStatusEnum, BookingStatusEnum,
-    InvoiceStatusEnum, LeadStatusEnum, PriorityEnum, TicketStatusEnum, VisitorStatusEnum
+    InvoiceStatusEnum, LeadStatusEnum, PriorityEnum, TicketStatusEnum, VisitorStatusEnum,
+    RoomStatusEnum, RoomBookingStatusEnum
 )
 
 # Auth
@@ -287,6 +288,83 @@ class SubscriptionOut(BaseModel):
     amount: float
     branch_id: Optional[int] = None
     branch_name: Optional[str] = None
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# Room
+class RoomCreate(BaseModel):
+    branch_id: int
+    room_name: str
+    floor: int = 1
+    capacity: int = 10
+    price_per_hour: float = 0.0
+    amenities: Optional[str] = None
+
+class RoomUpdate(BaseModel):
+    room_name: Optional[str] = None
+    floor: Optional[int] = None
+    capacity: Optional[int] = None
+    price_per_hour: Optional[float] = None
+    status: Optional[RoomStatusEnum] = None
+    amenities: Optional[str] = None
+
+class RoomOut(BaseModel):
+    id: int
+    branch_id: int
+    branch_name: Optional[str] = None
+    room_name: str
+    floor: int
+    capacity: int
+    price_per_hour: float
+    status: RoomStatusEnum
+    amenities: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+# Room Booking
+class RoomBookingCreate(BaseModel):
+    room_id: int
+    branch_id: int
+    start_time: datetime
+    end_time: datetime
+
+class RoomBookingOut(BaseModel):
+    id: int
+    room_id: int
+    room_name: Optional[str] = None
+    user_id: int
+    user_name: Optional[str] = None
+    branch_id: int
+    branch_name: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    status: RoomBookingStatusEnum
+    class Config:
+        from_attributes = True
+
+# Attendance
+class AttendanceOut(BaseModel):
+    id: int
+    user_id: int
+    user_name: Optional[str] = None
+    branch_id: int
+    branch_name: Optional[str] = None
+    check_in: datetime
+    check_out: Optional[datetime] = None
+    status: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# Notification
+class NotificationOut(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    body: Optional[str] = None
+    type: str
+    is_read: str
     created_at: datetime
     class Config:
         from_attributes = True
