@@ -119,6 +119,41 @@ export interface Ticket {
   created_at: string
 }
 
+export interface Room {
+  id: number
+  branch_id: number
+  branch_name?: string
+  room_name: string
+  floor: number
+  capacity: number
+  price_per_hour: number
+  status: "available" | "occupied" | "maintenance"
+  amenities?: string
+}
+
+export interface RoomBooking {
+  id: number
+  room_id: number
+  room_name?: string
+  user_id: number
+  user_name?: string
+  branch_id: number
+  branch_name?: string
+  start_time: string
+  end_time: string
+  status: "pending" | "confirmed" | "cancelled"
+}
+
+export interface Notification {
+  id: number
+  user_id: number
+  title: string
+  body?: string
+  type: string
+  is_read: string  // "true" | "false"
+  created_at: string
+}
+
 export interface DashboardAnalytics {
   total_branches: number
   occupied_seats: number

@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Building2, Armchair, UserCheck, CalendarDays,
   IndianRupee, FileText, Ticket, TrendingUp, ArrowUpRight, RefreshCw
@@ -102,6 +103,11 @@ export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState("monthly")
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (user?.role === "client") router.replace("/my-space")
+  }, [user, router])
 
   useEffect(() => {
     branchesApi.list().then((res) => setBranches(res.data)).catch(() => {})

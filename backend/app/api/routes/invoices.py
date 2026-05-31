@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.core.database import get_db
-from app.models.models import Invoice, InvoiceStatusEnum, User
+from app.models.models import Invoice, InvoiceStatusEnum, User, RoleEnum
 from app.schemas.schemas import InvoiceCreate, InvoiceUpdate, InvoiceOut
 from app.api.deps import get_current_user
+from app.services.notify import notify_user, notify_branch_staff
 
 router = APIRouter(prefix="/api/invoices", tags=["invoices"])
 
@@ -45,6 +46,9 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db), _=Depends
     db.add(invoice)
     db.commit()
     db.refresh(invoice)
+    # Notify client that an invoice was created for them
+    if invoice.client_id:
+        notify_user(db, invoice.client_id, "New Invoice", f"Invoice {invoice.invoice_number} for ₹{invoice.amount:,.0f} has been issued.", "invoice")
     return _enrich(invoice)
 
 @router.put("/{invoice_id}", response_model=InvoiceOut)
@@ -74,4 +78,8 @@ def mark_paid(invoice_id: int, db: Session = Depends(get_db), _=Depends(get_curr
     invoice.status = InvoiceStatusEnum.paid
     db.commit()
     db.refresh(invoice)
+    # Notify finance team + branch manager
+    if invoice.branch_id:
+        notify_branch_staff(db, invoice.branch_id, [RoleEnum.finance_team, RoleEnum.branch_manager],
+            "Invoice Paid", f"{invoice.client_name or 'A client'} paid {invoice.invoice_number} — ₹{invoice.amount:,.0f}.", "invoice")
     return _enrich(invoice)
