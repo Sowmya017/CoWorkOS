@@ -7,10 +7,11 @@ from jose import jwt, JWTError
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.api.deps import get_current_user
-from app.models.models import Attendance, Branch, User, RoleEnum
+from app.api.deps import get_current_user, get_optional_user
+from app.models.models import Attendance, Branch, User, RoleEnum, Visitor, VisitorStatusEnum
 from app.schemas.schemas import AttendanceOut
 from app.services.notify import notify_user
+from uuid import uuid4
 
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 
@@ -150,3 +151,69 @@ def list_attendance(
         out.branch_name = r.branch.branch_name if r.branch else None
         result.append(out)
     return result
+
+
+@router.post("/branch-checkin")
+def branch_checkin(payload: dict, db: Session = Depends(get_db), current_user: Optional[User] = Depends(get_optional_user)):
+    """
+    Public self-check-in endpoint triggered when a client scans the branch QR.
+    - If client is logged in (JWT cookie): creates an Attendance record.
+    - If guest (no account): creates a Visitor record using provided name + phone.
+    """
+    branch_id = payload.get("branch_id")
+    if not branch_id:
+        raise HTTPException(status_code=400, detail="branch_id is required")
+
+    branch = db.query(Branch).filter(Branch.id == branch_id).first()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    now = datetime.now(timezone.utc)
+
+    if current_user:
+        # ── Registered member ──────────────────────────────────────────────────
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        open_record = (
+            db.query(Attendance)
+            .filter(
+                Attendance.user_id == current_user.id,
+                Attendance.status == "checked_in",
+                Attendance.check_in >= today_start,
+            )
+            .first()
+        )
+        if open_record:
+            # Already checked in today — treat as checkout
+            open_record.check_out = now
+            open_record.status = "checked_out"
+            db.commit()
+            duration_mins = int((open_record.check_out - open_record.check_in).total_seconds() / 60)
+            notify_user(db, current_user.id, "Checked out", f"See you soon, {current_user.name}! You were here for {duration_mins} min.", "info")
+            return {"action": "checkout", "name": current_user.name, "type": "member", "duration_minutes": duration_mins, "branch_name": branch.branch_name}
+
+        record = Attendance(user_id=current_user.id, branch_id=branch_id, status="checked_in", check_in=now)
+        db.add(record)
+        db.commit()
+        notify_user(db, current_user.id, "Checked in", f"Welcome to {branch.branch_name}, {current_user.name}!", "info")
+        return {"action": "checkin", "name": current_user.name, "type": "member", "branch_name": branch.branch_name}
+
+    else:
+        # ── Guest / walk-in ────────────────────────────────────────────────────
+        name = (payload.get("name") or "").strip()
+        phone = (payload.get("phone") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="name is required for guest check-in")
+
+        visitor = Visitor(
+            name=name,
+            phone=phone or None,
+            branch_id=branch_id,
+            host_name="Walk-in",
+            purpose="Self Check-in",
+            qr_token=f"visitor_{uuid4().hex[:10]}",
+            check_in=now,
+            status=VisitorStatusEnum.checked_in,
+        )
+        db.add(visitor)
+        db.commit()
+        return {"action": "checkin", "name": name, "type": "guest", "branch_name": branch.branch_name}
