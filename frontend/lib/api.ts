@@ -57,6 +57,8 @@ export const visitorsApi = {
   create: (data: object) => api.post("/api/visitors", data),
   update: (id: number, data: object) => api.put(`/api/visitors/${id}`, data),
   checkout: (id: number) => api.patch(`/api/visitors/${id}/checkout`),
+  getByToken: (token: string) => publicApi.get(`/api/visitors/token/${token}`),
+  checkinByToken: (token: string) => publicApi.patch(`/api/visitors/checkin/${token}`),
 }
 
 // Leads

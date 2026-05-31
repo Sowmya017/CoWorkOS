@@ -68,6 +68,7 @@ class VisitorCreate(BaseModel):
     phone: Optional[str] = None
     company: Optional[str] = None
     host_name: Optional[str] = None
+    purpose: Optional[str] = None
     branch_id: int
 
 class VisitorOut(BaseModel):
@@ -76,8 +77,11 @@ class VisitorOut(BaseModel):
     phone: Optional[str] = None
     company: Optional[str] = None
     host_name: Optional[str] = None
+    purpose: Optional[str] = None
     branch_id: int
     branch_name: Optional[str] = None
+    qr_token: Optional[str] = None
+    qr_url: Optional[str] = None
     check_in: datetime
     check_out: Optional[datetime] = None
     status: VisitorStatusEnum
