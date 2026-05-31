@@ -8,7 +8,7 @@ from jose import jwt, JWTError
 from app.core.database import get_db
 from app.core.config import settings
 from app.api.deps import get_current_user
-from app.models.models import Attendance, User, RoleEnum
+from app.models.models import Attendance, Branch, User, RoleEnum
 from app.schemas.schemas import AttendanceOut
 from app.services.notify import notify_user
 
@@ -18,7 +18,7 @@ QR_TYPE = "qr_checkin"
 QR_EXPIRE_MINUTES = 15
 
 
-def _make_qr_token(user_id: int, branch_id: int) -> str:
+def _make_qr_token(user_id: int, branch_id) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=QR_EXPIRE_MINUTES)
     return jwt.encode(
         {"sub": str(user_id), "branch_id": branch_id, "type": QR_TYPE, "exp": expire},
@@ -30,8 +30,7 @@ def _make_qr_token(user_id: int, branch_id: int) -> str:
 @router.get("/qr")
 def get_qr_token(current_user: User = Depends(get_current_user)):
     """Return a time-bound QR token for the logged-in user."""
-    branch_id = current_user.branch_id or 0
-    token = _make_qr_token(current_user.id, branch_id)
+    token = _make_qr_token(current_user.id, current_user.branch_id)
     return {"token": token, "expires_in": QR_EXPIRE_MINUTES * 60}
 
 
@@ -51,11 +50,18 @@ def scan_qr(payload: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid QR type")
 
     user_id = int(data["sub"])
-    branch_id = int(data.get("branch_id", 0))
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Resolve branch: prefer user's assigned branch, fall back to first branch in DB
+    branch_id = user.branch_id
+    if not branch_id:
+        first_branch = db.query(Branch).order_by(Branch.id).first()
+        if not first_branch:
+            raise HTTPException(status_code=400, detail="No branch configured in system")
+        branch_id = first_branch.id
 
     # Look for an open attendance today
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
