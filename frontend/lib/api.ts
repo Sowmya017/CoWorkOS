@@ -145,6 +145,8 @@ export const roomsApi = {
 export const attendanceApi = {
   getQr: () => api.get("/api/attendance/qr"),
   scan: (token: string) => publicApi.post("/api/attendance/scan", { token }),
+  branchCheckin: (data: { branch_id: number; name?: string; phone?: string }) =>
+    api.post("/api/attendance/branch-checkin", data),
   my: () => api.get("/api/attendance/my"),
   list: (params?: object) => api.get("/api/attendance", { params }),
 }

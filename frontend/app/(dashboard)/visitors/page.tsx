@@ -1,8 +1,8 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Plus, LogOut, Search, Clock, Users, CheckCircle2, QrCode,
-  Trash2, Download, Copy, Check, X,
+  Trash2, Download, Copy, Check, Monitor,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -188,11 +188,101 @@ function VisitorRow({
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
+// ─── Branch Kiosk QR Modal ───────────────────────────────────────────────────
+function BranchQRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [branchId, setBranchId] = useState("1")
+  const [branches, setBranches] = useState<{ id: number; branch_name: string }[]>([])
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    import("@/lib/api").then(({ branchesApi }) =>
+      branchesApi.list().then(r => setBranches(r.data || [])).catch(() => {})
+    )
+  }, [open])
+
+  const checkinUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/checkin?branch=${branchId}`
+    : `/checkin?branch=${branchId}`
+
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(checkinUrl)}&bgcolor=ffffff&color=1e293b&margin=4`
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(checkinUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownload = () => {
+    const link = document.createElement("a")
+    link.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(checkinUrl)}&bgcolor=ffffff&color=1e293b&margin=8`
+    link.download = `checkin-qr-branch-${branchId}.png`
+    link.click()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Monitor className="w-5 h-5 text-[#CC2229]" /> Kiosk Check-In QR
+          </DialogTitle>
+          <DialogDescription>
+            Display this QR at the entrance. Clients scan it with their phone camera to self-check in.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Select Branch</label>
+            <Select value={branchId} onValueChange={setBranchId}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {branches.length > 0
+                  ? branches.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.branch_name}</SelectItem>)
+                  : <SelectItem value="1">Branch 1</SelectItem>}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 py-2">
+            <div className="p-3 bg-white rounded-2xl border-2 border-gray-100 shadow-inner">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrImageUrl} alt="Kiosk QR" width={200} height={200} className="rounded-lg" />
+            </div>
+            <p className="text-xs text-gray-400 text-center">Clients scan this → enter name → check in</p>
+          </div>
+
+          <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-700 space-y-0.5">
+            <p className="font-semibold text-blue-800">How it works</p>
+            <p>1. Display on a tablet or print at the entrance</p>
+            <p>2. Client scans with phone camera (no app needed)</p>
+            <p>3. Their name is shown and confirmed on screen</p>
+            <p>4. Check-in recorded instantly in CoWorkOS</p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 gap-2 text-sm" onClick={handleDownload}>
+              <Download className="w-4 h-4" /> Download
+            </Button>
+            <Button variant="outline" className="flex-1 gap-2 text-sm" onClick={handleCopy}>
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? "Copied!" : "Copy Link"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Main ────────────────────────────────────────────────────────────────────
 export default function VisitorsPage() {
   const { visitors: apiVisitors, loading, checkIn, checkOut, deleteVisitor } = useVisitors()
   const [localVisitors, setLocalVisitors] = useState<Visitor[]>([])
   const visitors = apiVisitors.length > 0 ? apiVisitors : localVisitors
   const [open, setOpen] = useState(false)
+  const [kioskQrOpen, setKioskQrOpen] = useState(false)
   const [qrVisitor, setQrVisitor] = useState<Visitor | null>(null)
   const [search, setSearch] = useState("")
   const [branchFilter, setBranchFilter] = useState("all")
@@ -302,9 +392,14 @@ export default function VisitorsPage() {
           <h1 className="text-2xl font-bold text-gray-800">Visitors</h1>
           <p className="text-gray-500 text-sm">Track and manage front-desk check-ins</p>
         </div>
-        <Button onClick={() => { setForm(EMPTY_FORM); setOpen(true) }} className="gap-2">
-          <Plus className="w-4 h-4" /> Check In Visitor
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setKioskQrOpen(true)} className="gap-2">
+            <Monitor className="w-4 h-4" /> Kiosk QR
+          </Button>
+          <Button onClick={() => { setForm(EMPTY_FORM); setOpen(true) }} className="gap-2">
+            <Plus className="w-4 h-4" /> Check In Visitor
+          </Button>
+        </div>
       </div>
 
       {/* Stat chips */}
@@ -425,6 +520,9 @@ export default function VisitorsPage() {
         open={!!qrVisitor}
         onClose={() => setQrVisitor(null)}
       />
+
+      {/* Branch Kiosk QR Modal */}
+      <BranchQRModal open={kioskQrOpen} onClose={() => setKioskQrOpen(false)} />
     </div>
   )
 }
