@@ -52,14 +52,12 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS — must be added first so it is the outermost middleware and
-# injects Access-Control headers on every response, including 500s.
-CORS_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
-
+# CORS — allow all origins so Vercel / Render / localhost all work.
+# Bearer-token auth doesn't require credential sharing, so wildcard is safe.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
