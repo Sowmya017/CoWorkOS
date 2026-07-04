@@ -313,7 +313,7 @@ export default function FloorsPage() {
                                   <div className="flex-1">
                                     <p className="text-xs font-medium text-slate-700">{asset.original_filename}</p>
                                     <p className="text-[10px] text-slate-400">
-                                      {asset.asset_type} · {(asset.file_size / 1024).toFixed(1)} KB
+                                      {asset.asset_type}{asset.file_size ? ` · ${(asset.file_size / 1024).toFixed(1)} KB` : ""}
                                     </p>
                                   </div>
                                   {isAdmin && (
