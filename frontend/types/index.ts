@@ -157,6 +157,123 @@ export interface Notification {
   created_at: string
 }
 
+// ─── Visual Workspace Management ────────────────────────────────────────────
+
+export type WorkspaceObjectType =
+  | "hot_desk"
+  | "dedicated_desk"
+  | "private_cabin"
+  | "meeting_room"
+  | "conference_room"
+  | "reception_area"
+  | "pantry_area"
+  | "collaboration_zone"
+  | "phone_booth"
+  | "parking_area"
+  | "wall"
+  | "pathway"
+  | "entrance_exit"
+  | "room_boundary"
+
+export type WorkspaceStatus = "available" | "occupied" | "reserved" | "maintenance" | "premium"
+
+export interface Floor {
+  id: number
+  branch_id: number
+  branch_name?: string
+  name: string
+  floor_number: number
+  description?: string
+  created_at: string
+}
+
+export interface FloorAsset {
+  id: number
+  floor_id: number
+  asset_type: string  // floor_plan | photograph | blueprint | svg
+  url: string
+  original_filename?: string
+  file_size?: number
+  created_at: string
+}
+
+export interface LayoutVersion {
+  id: number
+  floor_id: number
+  version_number: number
+  label?: string
+  is_active: boolean
+  canvas_width: number
+  canvas_height: number
+  background_image_url?: string | null
+  created_by?: number
+  created_at: string
+  updated_at?: string
+}
+
+export interface WorkspaceObject {
+  id: number
+  layout_version_id: number
+  floor_id: number
+  branch_id: number
+  object_type: WorkspaceObjectType
+  label?: string
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+  capacity: number
+  price_per_hour: number
+  price_per_day: number
+  price_per_month: number
+  status: WorkspaceStatus
+  is_locked: boolean
+  is_bookable: boolean
+  color?: string
+  amenities?: string  // JSON string
+  metadata_json?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface LayoutVersionDetail extends LayoutVersion {
+  workspace_objects: WorkspaceObject[]
+}
+
+export interface WorkspaceAvailability {
+  id: number
+  label?: string
+  object_type: WorkspaceObjectType
+  status: WorkspaceStatus
+  is_available: boolean
+  capacity: number
+  price_per_hour: number
+  price_per_day: number
+}
+
+export interface WorkspaceBooking {
+  id: number
+  workspace_object_id?: number
+  workspace_label?: string
+  user_id: number
+  user_name?: string
+  branch_id: number
+  branch_name?: string
+  start_time: string
+  end_time: string
+  booking_status: "pending" | "confirmed" | "cancelled" | "completed"
+  created_at: string
+}
+
+// Real-time WebSocket event
+export type LayoutWSEvent =
+  | { event: "object_created"; data: WorkspaceObject }
+  | { event: "object_updated"; data: WorkspaceObject }
+  | { event: "object_deleted"; data: { id: number } }
+  | { event: "status_changed"; data: { id: number; status: WorkspaceStatus } }
+  | { event: "bulk_updated"; data: WorkspaceObject[] }
+
 export interface DashboardAnalytics {
   total_branches: number
   occupied_seats: number

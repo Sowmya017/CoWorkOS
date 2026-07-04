@@ -1,8 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum as SAEnum, Text
+﻿from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum as SAEnum, Text, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 import enum
+
+# ─── Enums ─────────────────────────────────────────────────────────────────────
 
 class RoleEnum(str, enum.Enum):
     super_admin = "super_admin"
@@ -87,6 +89,30 @@ class RoomBookingStatusEnum(str, enum.Enum):
     confirmed = "confirmed"
     cancelled = "cancelled"
 
+class WorkspaceObjectTypeEnum(str, enum.Enum):
+    hot_desk = "hot_desk"
+    dedicated_desk = "dedicated_desk"
+    private_cabin = "private_cabin"
+    meeting_room = "meeting_room"
+    conference_room = "conference_room"
+    reception_area = "reception_area"
+    pantry_area = "pantry_area"
+    collaboration_zone = "collaboration_zone"
+    phone_booth = "phone_booth"
+    parking_area = "parking_area"
+    wall = "wall"
+    pathway = "pathway"
+    entrance_exit = "entrance_exit"
+    room_boundary = "room_boundary"
+
+class WorkspaceStatusEnum(str, enum.Enum):
+    available = "available"
+    occupied = "occupied"
+    reserved = "reserved"
+    maintenance = "maintenance"
+    premium = "premium"
+
+# ─── ORM Models ────────────────────────────────────────────────────────────────
 
 class Branch(Base):
     __tablename__ = "branches"
@@ -103,6 +129,7 @@ class Branch(Base):
     bookings = relationship("Booking", back_populates="branch")
     subscriptions = relationship("Subscription", back_populates="branch")
     rooms = relationship("Room", back_populates="branch")
+    floors = relationship("Floor", back_populates="branch", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -170,7 +197,8 @@ class Seat(Base):
 class Booking(Base):
     __tablename__ = "bookings"
     id = Column(Integer, primary_key=True, index=True)
-    seat_id = Column(Integer, ForeignKey("seats.id"), nullable=False)
+    seat_id = Column(Integer, ForeignKey("seats.id"), nullable=True)
+    workspace_object_id = Column(Integer, ForeignKey("workspace_objects.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
     start_time = Column(DateTime(timezone=True), nullable=False)
@@ -181,6 +209,7 @@ class Booking(Base):
     seat = relationship("Seat", back_populates="bookings")
     user = relationship("User", back_populates="bookings")
     branch = relationship("Branch", back_populates="bookings")
+    workspace_object = relationship("WorkspaceObject", back_populates="bookings")
 
 
 class Invoice(Base):
@@ -213,6 +242,7 @@ class Payment(Base):
     payment_method = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
     invoice = relationship("Invoice", back_populates="payments")
 
 
@@ -227,6 +257,7 @@ class Subscription(Base):
     amount = Column(Float, default=0.0)
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
     client = relationship("User", back_populates="subscriptions")
     branch = relationship("Branch", back_populates="subscriptions")
 
@@ -283,7 +314,7 @@ class Attendance(Base):
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
     check_in = Column(DateTime(timezone=True), server_default=func.now())
     check_out = Column(DateTime(timezone=True), nullable=True)
-    status = Column(String(20), default="checked_in")  # checked_in | checked_out
+    status = Column(String(20), default="checked_in")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User")
@@ -296,8 +327,89 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=True)
-    type = Column(String(50), default="info")  # info | booking | invoice | ticket | room
-    is_read = Column(String(5), default="false")  # stored as string for broad DB compat
+    type = Column(String(50), default="info")
+    is_read = Column(String(5), default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User")
+
+
+# ─── Visual Workspace Management ───────────────────────────────────────────────
+
+class Floor(Base):
+    __tablename__ = "floors"
+    id = Column(Integer, primary_key=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    floor_number = Column(Integer, default=0)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    branch = relationship("Branch", back_populates="floors")
+    assets = relationship("FloorAsset", back_populates="floor", cascade="all, delete-orphan")
+    layout_versions = relationship(
+        "LayoutVersion", back_populates="floor", cascade="all, delete-orphan"
+    )
+
+
+class FloorAsset(Base):
+    __tablename__ = "floor_assets"
+    id = Column(Integer, primary_key=True, index=True)
+    floor_id = Column(Integer, ForeignKey("floors.id"), nullable=False)
+    asset_type = Column(String(50), nullable=False)
+    url = Column(String(500), nullable=False)
+    original_filename = Column(String(255), nullable=True)
+    file_size = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    floor = relationship("Floor", back_populates="assets")
+
+
+class LayoutVersion(Base):
+    __tablename__ = "layout_versions"
+    id = Column(Integer, primary_key=True, index=True)
+    floor_id = Column(Integer, ForeignKey("floors.id"), nullable=False)
+    version_number = Column(Integer, default=1)
+    label = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=False)
+    canvas_width = Column(Float, default=1200.0)
+    canvas_height = Column(Float, default=800.0)
+    background_image_url = Column(String(500), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+    floor = relationship("Floor", back_populates="layout_versions")
+    workspace_objects = relationship(
+        "WorkspaceObject", back_populates="layout_version", cascade="all, delete-orphan"
+    )
+
+
+class WorkspaceObject(Base):
+    __tablename__ = "workspace_objects"
+    id = Column(Integer, primary_key=True, index=True)
+    layout_version_id = Column(Integer, ForeignKey("layout_versions.id"), nullable=False)
+    floor_id = Column(Integer, ForeignKey("floors.id"), nullable=False)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
+    object_type = Column(SAEnum(WorkspaceObjectTypeEnum), nullable=False)
+    label = Column(String(255), nullable=True)
+    x = Column(Float, default=0.0)
+    y = Column(Float, default=0.0)
+    width = Column(Float, default=120.0)
+    height = Column(Float, default=80.0)
+    rotation = Column(Float, default=0.0)
+    capacity = Column(Integer, default=1)
+    price_per_hour = Column(Float, default=0.0)
+    price_per_day = Column(Float, default=0.0)
+    price_per_month = Column(Float, default=0.0)
+    status = Column(SAEnum(WorkspaceStatusEnum), default=WorkspaceStatusEnum.available)
+    is_locked = Column(Boolean, default=False)
+    is_bookable = Column(Boolean, default=True)
+    color = Column(String(20), nullable=True)
+    amenities = Column(Text, nullable=True)
+    metadata_json = Column("metadata", Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+    layout_version = relationship("LayoutVersion", back_populates="workspace_objects")
+    bookings = relationship("Booking", back_populates="workspace_object")

@@ -20,6 +20,7 @@ const navItems = [
   { href: "/leads",      icon: Briefcase,       label: "CRM / Leads", roles: ["super_admin","branch_manager","sales_team"], section: "main" },
   { href: "/seats",      icon: Armchair,        label: "Seats",       roles: ["super_admin","branch_manager","receptionist"], section: "main" },
   { href: "/rooms",      icon: DoorOpen,        label: "Rooms",       roles: ["super_admin","branch_manager"], section: "main" },
+  { href: "/floors",     icon: Building2,       label: "Floor Plans",  roles: ["super_admin","branch_manager","receptionist","client"], section: "main" },
   { href: "/bookings",   icon: CalendarDays,    label: "Bookings",    roles: ["super_admin","branch_manager","receptionist"], section: "main" },
   { href: "/invoices",   icon: FileText,        label: "Invoices",    roles: ["super_admin","finance_team","branch_manager"], section: "main" },
   { href: "/tickets",    icon: Ticket,          label: "Tickets",     roles: ["super_admin","branch_manager","finance_team","sales_team","receptionist"], section: "main" },
