@@ -253,12 +253,14 @@ export default function LayoutCanvas({
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 40, y: 40 })
   const [size, setSize] = useState({ w: 900, h: 600 })
-  const [gridPattern, setGridPattern] = useState<HTMLCanvasElement | null>(null)
+  const [gridPattern, setGridPattern] = useState<HTMLImageElement | null>(null)
 
   const { snapToGrid, gridSize, showGrid } = useLayoutStore()
 
-  // Build grid pattern
-  useEffect(() => { setGridPattern(buildGridPattern(gridSize)) }, [gridSize])
+  // Build grid pattern — Konva accepts HTMLCanvasElement at runtime; cast for TS
+  useEffect(() => {
+    setGridPattern(buildGridPattern(gridSize) as unknown as HTMLImageElement)
+  }, [gridSize])
 
   // Observe container size
   useEffect(() => {
