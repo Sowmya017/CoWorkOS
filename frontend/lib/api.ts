@@ -175,3 +175,56 @@ export const dashboardApi = {
   leadsAnalytics: () => api.get("/api/dashboard/leads"),
   bookingsAnalytics: (params?: object) => api.get("/api/dashboard/bookings", { params }),
 }
+
+// ─── Visual Workspace Management ────────────────────────────────────────────
+
+export const floorsApi = {
+  list: (params?: object) => api.get("/api/floors", { params }),
+  get: (id: number) => api.get(`/api/floors/${id}`),
+  create: (data: object) => api.post("/api/floors", data),
+  update: (id: number, data: object) => api.put(`/api/floors/${id}`, data),
+  delete: (id: number) => api.delete(`/api/floors/${id}`),
+  listAssets: (floorId: number) => api.get(`/api/floors/${floorId}/assets`),
+  uploadAsset: (floorId: number, file: File, assetType = "floor_plan") => {
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("asset_type", assetType)
+    return api.post(`/api/floors/${floorId}/assets`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  },
+  deleteAsset: (floorId: number, assetId: number) =>
+    api.delete(`/api/floors/${floorId}/assets/${assetId}`),
+}
+
+export const layoutVersionsApi = {
+  list: (params?: object) => api.get("/api/layout-versions", { params }),
+  get: (id: number) => api.get(`/api/layout-versions/${id}`),
+  getActive: (floorId: number) => api.get(`/api/layout-versions/floor/${floorId}/active`),
+  create: (data: object) => api.post("/api/layout-versions", data),
+  update: (id: number, data: object) => api.put(`/api/layout-versions/${id}`, data),
+  activate: (id: number) => api.post(`/api/layout-versions/${id}/activate`),
+  clone: (id: number, label?: string) =>
+    api.post(`/api/layout-versions/${id}/clone`, null, { params: { label } }),
+  delete: (id: number) => api.delete(`/api/layout-versions/${id}`),
+}
+
+export const workspaceObjectsApi = {
+  list: (params?: object) => api.get("/api/workspace-objects", { params }),
+  get: (id: number) => api.get(`/api/workspace-objects/${id}`),
+  create: (data: object) => api.post("/api/workspace-objects", data),
+  update: (id: number, data: object) => api.put(`/api/workspace-objects/${id}`, data),
+  updateStatus: (id: number, status: string) =>
+    api.patch(`/api/workspace-objects/${id}/status`, null, { params: { status } }),
+  delete: (id: number) => api.delete(`/api/workspace-objects/${id}`),
+  bulkUpdate: (ids: number[], updates: object[]) =>
+    api.post("/api/workspace-objects/bulk-update", null, { params: { ids, updates } }),
+}
+
+export const workspaceBookingsApi = {
+  list: (params?: object) => api.get("/api/workspace-bookings", { params }),
+  create: (data: object) => api.post("/api/workspace-bookings", data),
+  cancel: (id: number) => api.delete(`/api/workspace-bookings/${id}`),
+  availability: (floorId: number, params?: object) =>
+    api.get(`/api/workspace-bookings/availability/${floorId}`, { params }),
+}
